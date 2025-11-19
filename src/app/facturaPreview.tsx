@@ -1,3 +1,4 @@
+import * as ImagePicker from "expo-image-picker";
 import * as Print from "expo-print";
 import { useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
@@ -8,6 +9,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View
 } from "react-native";
@@ -16,6 +18,10 @@ import { getFacturas } from "../utils/storage";
 export default function FacturaPreview() {
   const router = useRouter();
   const [invoice, setInvoice] = useState<any>(null);
+
+  const [companyLogo, setCompanyLogo] = useState<string>(require("../../assets/images/BP_Logotipo.png"));
+  const [companyName, setCompanyName] = useState<string>("Brilho no Ponto");
+  const [companyAddress, setCompanyAddress] = useState<string>("Luanda, Angola");
 
   useEffect(() => {
     const loadInvoice = async () => {
@@ -29,7 +35,17 @@ export default function FacturaPreview() {
     loadInvoice();
   }, []);
 
-  
+  const pickLogo = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      setCompanyLogo(result.assets[0].uri);
+    }
+  };
 
   const exportPdf = async () => {
     if (!invoice) return;
@@ -48,6 +64,7 @@ export default function FacturaPreview() {
     const impostoValor = invoice.impostoValor || 0;
     const total = invoice.total || subtotal + impostoValor;
 
+    // HTML do PDF
     const html = `
 <!DOCTYPE html>
 <html lang="en">
@@ -82,9 +99,10 @@ export default function FacturaPreview() {
 <div class="invoice">
   <header>
     <div class="logo">
-    <img src="../../assets/images/BP_Logotipo.png" alt="Logo"/>
+      <img src="${companyLogo}" alt="Logo"/>
     </div>
-    <h1 class="invoice-title">Factura</h1>
+    <h1 class="invoice-title">${companyName}</h1>
+    <div>${companyAddress}</div>
     <div class="invoice-meta">
       <div>
         <div>Factura Nº${invoice.id}</div>
@@ -116,8 +134,7 @@ export default function FacturaPreview() {
           <td class="qty">${item.quantidade}</td>
           <td class="total">${(item.preco * item.quantidade).toFixed(2)}</td>
         </tr>
-      `
-      ).join('')}
+      `).join('')}
     </tbody>
   </table>
 
@@ -182,7 +199,21 @@ export default function FacturaPreview() {
         <Text style={styles.backButtonText}>← Voltar</Text>
       </TouchableOpacity>
 
-      <Image source={require("../../assets/images/BP_Logotipo.png")} style={{ width: 100, height: 100, resizeMode: 'contain', marginBottom: 16 }} />
+      <TouchableOpacity onPress={pickLogo}>
+        <Image source={{ uri: typeof companyLogo === "string" ? companyLogo : Image.resolveAssetSource(companyLogo).uri }} style={{ width: 100, height: 100, resizeMode: 'contain', marginBottom: 16 }} />
+      </TouchableOpacity>
+
+      <TextInput
+        style={[styles.clientName, { marginBottom: 4 }]}
+        value={companyName}
+        onChangeText={setCompanyName}
+      />
+
+      <TextInput
+        style={[styles.clientAddress, { marginBottom: 16 }]}
+        value={companyAddress}
+        onChangeText={setCompanyAddress}
+      />
 
       <Text style={styles.invoiceNumber}>Factura Nº{invoice.id}</Text>
       <Text style={styles.date}>{new Date(invoice.data).toLocaleDateString()}</Text>
